@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Kit</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#14101f;color:#f2eefc;margin:0;padding:20px;max-width:720px}
+h1{font-size:24px} .card{background:#221b38;border:1px solid #3d2f66;border-radius:16px;padding:16px;margin:12px 0}
+label{display:block;margin:8px 0 4px;color:#c9bfe0} input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #3d2f66;background:#120e1d;color:#fff;box-sizing:border-box}
+button{background:#7a2cf0;color:#fff;border:0;border-radius:10px;padding:11px 14px;margin-top:10px;cursor:pointer}
+button.danger{background:#7a2c4a} .small{color:#c9bfe0;font-size:14px} li{margin:6px 0}
+</style></head><body>
+<h1>Field Kit</h1>
+<p class="small">Offline-first kit for rides, hikes, fishing, and field work. Checklists, notes, and a moon phase that is calculated on your device, no signal needed after the page loads. No signup, no upload. Tide times are entered by hand from your local source, this app does not invent them.</p>
+<div class="card"><h2>Moon tonight</h2><p id="moon"></p><p class="small">Calculated from the date using the synodic month (29.53 days). Approximate, good for planning light, not for navigation.</p></div>
+<div class="card"><h2>Before you go checklist</h2>
+<ul id="checks"></ul>
+<label>Add checklist item <input id="newcheck" placeholder="e.g. Helmet, Water, Phone charged"></label>
+<button onclick="addCheck()">Add item</button></div>
+<div class="card"><h2>Conditions log</h2>
+<label>Conditions (enter by hand) <textarea id="cond" rows="2" placeholder="e.g. Wind NE 15 mph, tide high 2:30pm from local forecast"></textarea></label>
+<button onclick="saveCond()">Save today's conditions</button>
+<ul id="condlist"></ul></div>
+<div class="card"><h2>Field notes</h2>
+<textarea id="note" rows="4" placeholder="What worked, what to bring next time, where you went"></textarea>
+<button onclick="addNote()">Save note</button>
+<ul id="notelist"></ul></div>
+<script>
+let checks=JSON.parse(localStorage.getItem('fk-checks')||'["Helmet / gear","Water","Phone charged","Keys / wallet","First aid"]');
+let conds=JSON.parse(localStorage.getItem('fk-conds')||'[]');
+let notes=JSON.parse(localStorage.getItem('fk-notes')||'[]');
+function save(){localStorage.setItem('fk-checks',JSON.stringify(checks));localStorage.setItem('fk-conds',JSON.stringify(conds));localStorage.setItem('fk-notes',JSON.stringify(notes));render();}
+function addCheck(){let v=document.getElementById('newcheck').value.trim();if(!v)return;checks.push(v);document.getElementById('newcheck').value='';save();}
+function delCheck(i){checks.splice(i,1);save();}
+function saveCond(){let v=document.getElementById('cond').value.trim();if(!v)return;conds.unshift({d:new Date().toISOString().slice(0,10),v});document.getElementById('cond').value='';save();}
+function addNote(){let v=document.getElementById('note').value.trim();if(!v)return;notes.unshift({d:new Date().toISOString().slice(0,10),v});document.getElementById('note').value='';save();}
+function delNote(i){notes.splice(i,1);save();}
+function moonPhase(){let syn=29.53058867,known=new Date('2000-01-06T18:14:00Z');let days=(new Date()-known)/86400000;let age=((days%syn)+syn)%syn;let names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];let idx=Math.floor((age/syn)*8)%8;return names[idx]+' — day '+age.toFixed(1)+' of the lunar cycle.';}
+document.getElementById('moon').textContent=moonPhase();
+function render(){
+ document.getElementById('checks').innerHTML=checks.map((c,i)=>`<li><label><input type="checkbox"> ${c}</label> <button class="danger" onclick="delCheck(${i})">Delete</button></li>`).join('');
+ document.getElementById('condlist').innerHTML=conds.map(c=>`<li>${c.d}: ${c.v}</li>`).join('')||'<li class="small">No conditions logged yet.</li>';
+ document.getElementById('notelist').innerHTML=notes.map((n,i)=>`<li>${n.d}: ${n.v} <button class="danger" onclick="delNote(${i})">Delete</button></li>`).join('')||'<li class="small">No notes yet.</li>';
+}
+render();
+</script></body></html>
