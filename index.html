@@ -26,25 +26,30 @@ button.danger{background:#7a2c4a} .small{color:#c9bfe0;font-size:14px} li{margin
 <button onclick="addNote()">Save note</button>
 <ul id="notelist"></ul></div>
 <script>
-let checks=JSON.parse(localStorage.getItem('fk-checks')||'["Helmet / gear","Water","Phone charged","Keys / wallet","First aid"]');
-let conds=JSON.parse(localStorage.getItem('fk-conds')||'[]');
-let notes=JSON.parse(localStorage.getItem('fk-notes')||'[]');
-let checked=JSON.parse(localStorage.getItem('fk-checked')||'[]');
-function save(){localStorage.setItem('fk-checks',JSON.stringify(checks));localStorage.setItem('fk-conds',JSON.stringify(conds));localStorage.setItem('fk-notes',JSON.stringify(notes));localStorage.setItem('fk-checked',JSON.stringify(checked));render();}
-function toggleCheck(i,el){if(el.checked){if(!checked.includes(i))checked.push(i);}else{checked=checked.filter(x=>x!==i);}localStorage.setItem('fk-checked',JSON.stringify(checked));render();}
-function resetChecks(){checked=[];localStorage.setItem('fk-checked',JSON.stringify(checked));render();}
+function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));return v===null?fallback:v;}catch(e){return fallback;}}
+function store(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function localDate(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+let checks=load('fk-checks',["Helmet / gear","Water","Phone charged","Keys / wallet","First aid"]);
+let conds=load('fk-conds',[]);
+let notes=load('fk-notes',[]);
+let checked=load('fk-checked',[]);
+function save(){store('fk-checks',checks);store('fk-conds',conds);store('fk-notes',notes);store('fk-checked',checked);render();}
+function toggleCheck(i,el){if(el.checked){if(!checked.includes(i))checked.push(i);}else{checked=checked.filter(x=>x!==i);}store('fk-checked',checked);render();}
+function resetChecks(){checked=[];store('fk-checked',checked);render();}
 function addCheck(){let v=document.getElementById('newcheck').value.trim();if(!v)return;checks.push(v);document.getElementById('newcheck').value='';save();}
-function delCheck(i){checks.splice(i,1);save();}
-function saveCond(){let v=document.getElementById('cond').value.trim();if(!v)return;conds.unshift({d:new Date().toISOString().slice(0,10),v});document.getElementById('cond').value='';save();}
-function addNote(){let v=document.getElementById('note').value.trim();if(!v)return;notes.unshift({d:new Date().toISOString().slice(0,10),v});document.getElementById('note').value='';save();}
+function delCheck(i){checks.splice(i,1);checked=checked.filter(x=>x!==i).map(x=>x>i?x-1:x);save();}
+function delCond(i){conds.splice(i,1);save();}
+function saveCond(){let v=document.getElementById('cond').value.trim();if(!v)return;conds.unshift({d:localDate(),v});document.getElementById('cond').value='';save();}
+function addNote(){let v=document.getElementById('note').value.trim();if(!v)return;notes.unshift({d:localDate(),v});document.getElementById('note').value='';save();}
 function delNote(i){notes.splice(i,1);save();}
 function moonPhase(){let syn=29.53058867,known=new Date('2000-01-06T18:14:00Z');let days=(new Date()-known)/86400000;let age=((days%syn)+syn)%syn;let names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];let idx=Math.floor((age/syn)*8)%8;return names[idx]+' — day '+age.toFixed(1)+' of the lunar cycle.';}
 document.getElementById('moon').textContent=moonPhase();
 function render(){
  document.getElementById('progress').textContent=checks.length?('Checked '+checked.filter(i=>i<checks.length).length+' of '+checks.length):'';
- document.getElementById('checks').innerHTML=checks.map((c,i)=>`<li><label><input type="checkbox" ${checked.includes(i)?'checked':''} onchange="toggleCheck(${i},this)"> ${c}</label> <button class="danger" onclick="delCheck(${i})">Delete</button></li>`).join('');
- document.getElementById('condlist').innerHTML=conds.map(c=>`<li>${c.d}: ${c.v}</li>`).join('')||'<li class="small">No conditions logged yet.</li>';
- document.getElementById('notelist').innerHTML=notes.map((n,i)=>`<li>${n.d}: ${n.v} <button class="danger" onclick="delNote(${i})">Delete</button></li>`).join('')||'<li class="small">No notes yet.</li>';
+ document.getElementById('checks').innerHTML=checks.map((c,i)=>`<li><label><input type="checkbox" ${checked.includes(i)?'checked':''} onchange="toggleCheck(${i},this)"> ${esc(c)}</label> <button class="danger" onclick="delCheck(${i})">Delete</button></li>`).join('');
+ document.getElementById('condlist').innerHTML=conds.map((c,i)=>`<li>${esc(c.d)}: ${esc(c.v)} <button class="danger" onclick="delCond(${i})">Delete</button></li>`).join('')||'<li class="small">No conditions logged yet.</li>';
+ document.getElementById('notelist').innerHTML=notes.map((n,i)=>`<li>${esc(n.d)}: ${esc(n.v)} <button class="danger" onclick="delNote(${i})">Delete</button></li>`).join('')||'<li class="small">No notes yet.</li>';
 }
 render();
 </script></body></html>
