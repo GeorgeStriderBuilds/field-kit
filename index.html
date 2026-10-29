@@ -7,6 +7,7 @@ h1{font-size:24px} .card{background:#221b38;border:1px solid #3d2f66;border-radi
 label{display:block;margin:8px 0 4px;color:#c9bfe0} input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #3d2f66;background:#120e1d;color:#fff;box-sizing:border-box}
 button{background:#7a2cf0;color:#fff;border:0;border-radius:10px;padding:11px 14px;margin-top:10px;cursor:pointer}
 button.danger{background:#7a2c4a} .small{color:#c9bfe0;font-size:14px} li{margin:6px 0}
+button.copybtn{width:100%;min-height:48px;font-size:16px;font-weight:700;padding:14px}
 </style></head><body>
 <h1>Field Kit</h1>
 <p class="small">Offline-first kit for rides, hikes, fishing, and field work. Checklists, notes, and a moon phase that is calculated on your device, no signal needed after the page loads. No signup, no upload. Tide times are entered by hand from your local source, this app does not invent them.</p>
@@ -25,6 +26,10 @@ button.danger{background:#7a2c4a} .small{color:#c9bfe0;font-size:14px} li{margin
 <textarea id="note" rows="4" placeholder="What worked, what to bring next time, where you went"></textarea>
 <button onclick="addNote()">Save note</button>
 <ul id="notelist"></ul></div>
+<div class="card"><h2>Today's field log</h2>
+<p class="small">Copies today's checked items, today's conditions, and today's notes as plain text, so you can paste it into a message or a trip report. Nothing leaves this device except what you choose to paste or share yourself.</p>
+<button class="copybtn" onclick="copyTodaysLog()">Copy today's field log</button>
+<p id="copyStatus" class="small"></p></div>
 <script>
 function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));return v===null?fallback:v;}catch(e){return fallback;}}
 function store(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}}
@@ -43,6 +48,38 @@ function delCond(i){conds.splice(i,1);save();}
 function saveCond(){let v=document.getElementById('cond').value.trim();if(!v)return;conds.unshift({d:localDate(),v});document.getElementById('cond').value='';save();}
 function addNote(){let v=document.getElementById('note').value.trim();if(!v)return;notes.unshift({d:localDate(),v});document.getElementById('note').value='';save();}
 function delNote(i){notes.splice(i,1);save();}
+function todaysLogText(){
+ const today=localDate();
+ const done=checks.filter((c,i)=>checked.includes(i));
+ const todayConds=conds.filter(c=>c.d===today);
+ const todayNotes=notes.filter(n=>n.d===today);
+ const lines=['Field Kit log — '+today,''];
+ lines.push('Checked ('+done.length+' of '+checks.length+'):');
+ lines.push.apply(lines, done.length ? done.map(c=>'- '+c) : ['- None checked yet']);
+ lines.push('','Conditions today:');
+ lines.push.apply(lines, todayConds.length ? todayConds.map(c=>'- '+c.v) : ['- No conditions logged today']);
+ lines.push('','Notes today:');
+ lines.push.apply(lines, todayNotes.length ? todayNotes.map(n=>'- '+n.v) : ['- No notes today']);
+ return lines.join('\n');
+}
+async function copyTodaysLog(){
+ const text=todaysLogText();const status=document.getElementById('copyStatus');
+ const copied=async()=>{
+   if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);return true;}
+   throw new Error('clipboard unavailable');
+ };
+ const copiedLegacy=()=>{
+   const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+   document.body.appendChild(ta);ta.select();
+   let ok=false;try{ok=document.execCommand('copy');}catch(e){ok=false;}
+   document.body.removeChild(ta);return ok;
+ };
+ try{await copied();status.textContent="Today's field log copied — paste it into a message or trip report.";return;}
+ catch(e){}
+ if(copiedLegacy()){status.textContent="Today's field log copied — paste it into a message or trip report.";return;}
+ if(navigator.share){try{await navigator.share({title:'Field Kit log — '+localDate(),text});status.textContent="Today's field log shared.";return;}catch(e){}}
+ status.textContent='Copy did not work in this browser. Try again, or copy from the log sections above.';
+}
 function moonPhase(){let syn=29.53058867,known=new Date('2000-01-06T18:14:00Z');let days=(new Date()-known)/86400000;let age=((days%syn)+syn)%syn;let names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];let idx=Math.floor((age/syn)*8)%8;return names[idx]+' — day '+age.toFixed(1)+' of the lunar cycle.';}
 document.getElementById('moon').textContent=moonPhase();
 function render(){
