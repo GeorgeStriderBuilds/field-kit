@@ -5,7 +5,8 @@
 body{font-family:system-ui,sans-serif;background:#14101f;color:#f2eefc;margin:0;padding:20px;max-width:720px}
 h1{font-size:24px} .card{background:#221b38;border:1px solid #3d2f66;border-radius:16px;padding:16px;margin:12px 0}
 label{display:block;margin:8px 0 4px;color:#c9bfe0} input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #3d2f66;background:#120e1d;color:#fff;box-sizing:border-box}
-button{background:#7a2cf0;color:#fff;border:0;border-radius:10px;padding:11px 14px;margin-top:10px;cursor:pointer}
+button{background:#7a2cf0;color:#fff;border:0;border-radius:10px;padding:11px 14px;margin-top:10px;cursor:pointer;min-height:48px}
+input[type=checkbox]{width:22px;height:22px;vertical-align:middle}
 button.danger{background:#7a2c4a} .small{color:#c9bfe0;font-size:14px} li{margin:6px 0}
 button.copybtn{width:100%;min-height:48px;font-size:16px;font-weight:700;padding:14px}
 </style></head><body>
@@ -41,19 +42,19 @@ let notes=load('fk-notes',[]);
 let checked=load('fk-checked',[]);
 function save(){store('fk-checks',checks);store('fk-conds',conds);store('fk-notes',notes);store('fk-checked',checked);render();}
 function toggleCheck(i,el){if(el.checked){if(!checked.includes(i))checked.push(i);}else{checked=checked.filter(x=>x!==i);}store('fk-checked',checked);render();}
-function resetChecks(){checked=[];store('fk-checked',checked);render();}
+function resetChecks(){if(!confirm('Reset the checklist? All checked items will be unchecked.'))return;checked=[];store('fk-checked',checked);render();}
 function addCheck(){let v=document.getElementById('newcheck').value.trim();if(!v)return;checks.push(v);document.getElementById('newcheck').value='';save();}
-function delCheck(i){checks.splice(i,1);checked=checked.filter(x=>x!==i).map(x=>x>i?x-1:x);save();}
-function delCond(i){conds.splice(i,1);save();}
+function delCheck(i){if(!confirm('Delete this checklist item?'))return;checks.splice(i,1);checked=checked.filter(x=>x!==i).map(x=>x>i?x-1:x);save();}
+function delCond(i){if(!confirm('Delete this conditions entry?'))return;conds.splice(i,1);save();}
 function saveCond(){let v=document.getElementById('cond').value.trim();if(!v)return;conds.unshift({d:localDate(),v});document.getElementById('cond').value='';save();}
 function addNote(){let v=document.getElementById('note').value.trim();if(!v)return;notes.unshift({d:localDate(),v});document.getElementById('note').value='';save();}
-function delNote(i){notes.splice(i,1);save();}
+function delNote(i){if(!confirm('Delete this note?'))return;notes.splice(i,1);save();}
 function todaysLogText(){
  const today=localDate();
  const done=checks.filter((c,i)=>checked.includes(i));
  const todayConds=conds.filter(c=>c.d===today);
  const todayNotes=notes.filter(n=>n.d===today);
- const lines=['Field Kit log — '+today,''];
+ const lines=['Field Kit log - '+today,''];
  lines.push('Checked ('+done.length+' of '+checks.length+'):');
  lines.push.apply(lines, done.length ? done.map(c=>'- '+c) : ['- None checked yet']);
  lines.push('','Conditions today:');
@@ -74,19 +75,19 @@ async function copyTodaysLog(){
    let ok=false;try{ok=document.execCommand('copy');}catch(e){ok=false;}
    document.body.removeChild(ta);return ok;
  };
- try{await copied();status.textContent="Today's field log copied — paste it into a message or trip report.";return;}
+ try{await copied();status.textContent="Today's field log copied. Paste it into a message or trip report.";return;}
  catch(e){}
- if(copiedLegacy()){status.textContent="Today's field log copied — paste it into a message or trip report.";return;}
- if(navigator.share){try{await navigator.share({title:'Field Kit log — '+localDate(),text});status.textContent="Today's field log shared.";return;}catch(e){}}
+ if(copiedLegacy()){status.textContent="Today's field log copied. Paste it into a message or trip report.";return;}
+ if(navigator.share){try{await navigator.share({title:'Field Kit log - '+localDate(),text});status.textContent="Today's field log shared.";return;}catch(e){}}
  status.textContent='Copy did not work in this browser. Try again, or copy from the log sections above.';
 }
-function moonPhase(){let syn=29.53058867,known=new Date('2000-01-06T18:14:00Z');let days=(new Date()-known)/86400000;let age=((days%syn)+syn)%syn;let names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];let idx=Math.floor((age/syn)*8)%8;return names[idx]+' — day '+age.toFixed(1)+' of the lunar cycle.';}
+function moonPhase(){let syn=29.53058867,known=new Date('2000-01-06T18:14:00Z');let days=(new Date()-known)/86400000;let age=((days%syn)+syn)%syn;let names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];let idx=Math.floor((age/syn)*8)%8;return names[idx]+', day '+age.toFixed(1)+' of the lunar cycle.';}
 document.getElementById('moon').textContent=moonPhase();
 function render(){
  document.getElementById('progress').textContent=checks.length?('Checked '+checked.filter(i=>i<checks.length).length+' of '+checks.length):'';
- document.getElementById('checks').innerHTML=checks.map((c,i)=>`<li><label><input type="checkbox" ${checked.includes(i)?'checked':''} onchange="toggleCheck(${i},this)"> ${esc(c)}</label> <button class="danger" onclick="delCheck(${i})">Delete</button></li>`).join('');
- document.getElementById('condlist').innerHTML=conds.map((c,i)=>`<li>${esc(c.d)}: ${esc(c.v)} <button class="danger" onclick="delCond(${i})">Delete</button></li>`).join('')||'<li class="small">No conditions logged yet.</li>';
- document.getElementById('notelist').innerHTML=notes.map((n,i)=>`<li>${esc(n.d)}: ${esc(n.v)} <button class="danger" onclick="delNote(${i})">Delete</button></li>`).join('')||'<li class="small">No notes yet.</li>';
+ document.getElementById('checks').innerHTML=checks.map((c,i)=>`<li><label><input type="checkbox" ${checked.includes(i)?'checked':''} onchange="toggleCheck(${i},this)"> ${esc(c)}</label> <button class="danger" onclick="delCheck(${i})">Delete</button></li>`).join('')||'<li class="small">Checklist is empty. Add the first item above.</li>';
+ document.getElementById('condlist').innerHTML=conds.map((c,i)=>`<li>${esc(c.d)}: ${esc(c.v)} <button class="danger" onclick="delCond(${i})">Delete</button></li>`).join('')||'<li class="small">No conditions logged yet. The sky is still unwritten.</li>';
+ document.getElementById('notelist').innerHTML=notes.map((n,i)=>`<li>${esc(n.d)}: ${esc(n.v)} <button class="danger" onclick="delNote(${i})">Delete</button></li>`).join('')||'<li class="small">No notes yet. The trail has not spoken.</li>';
 }
 render();
 </script></body></html>
